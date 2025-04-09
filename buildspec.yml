@@ -1,0 +1,43 @@
+version: 0.2
+
+env:
+  variables:
+    IMAGE_REPO_NAME: springboot-demo-ci-cd
+    IMAGE_TAG: latest
+    AWS_REGION: ap-south-1
+    ECR_REGISTRY: 047447425414.dkr.ecr.ap-south-1.amazonaws.com
+
+phases:
+  install:
+    runtime-versions:
+      java: corretto17
+      docker: 20
+    commands:
+      - echo Installing Maven...
+      - yum install -y maven
+
+  pre_build:
+    commands:
+      - echo Logging in to Amazon ECR...
+      - aws --version
+      - $(aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REGISTRY)
+      - echo Build started on `date`
+      - echo Compiling the Spring Boot project...
+      - mvn clean package -DskipTests
+
+  build:
+    commands:
+      - echo Building the Docker image...
+      - docker build -t $IMAGE_REPO_NAME:$IMAGE_TAG .
+      - docker tag $IMAGE_REPO_NAME:$IMAGE_TAG $ECR_REGISTRY/$IMAGE_REPO_NAME:$IMAGE_TAG
+
+  post_build:
+    commands:
+      - echo Pushing the Docker image to ECR...
+      - docker push $ECR_REGISTRY/$IMAGE_REPO_NAME:$IMAGE_TAG
+      - echo Writing imagedefinitions.json for ECS...
+      - printf '[{"name":"my-springboot-container","imageUri":"%s"}]' $ECR_REGISTRY/$IMAGE_REPO_NAME:$IMAGE_TAG > imagedefinitions.json
+
+artifacts:
+  files:
+    - imagedefinitions.json
