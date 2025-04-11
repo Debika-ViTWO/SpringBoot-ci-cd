@@ -1,0 +1,9 @@
+version: 1
+Resources:
+  - TargetService:
+      Type: AWS::ECS::Service
+      Properties:
+        TaskDefinition: springboot-task-ec2
+        LoadBalancerInfo:
+          ContainerName: springboot-app
+          ContainerPort: 8080
